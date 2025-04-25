@@ -1,0 +1,47 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Hospital.Domain.Entities
+{
+    [Table("historialclinico")]
+    public class HistorialClinico
+    {
+        [Key]
+        [Column("id_historial")]
+        public int IdHistorial { get; set; }
+
+        [Column("id_paciente")]
+        public int IdPaciente { get; set; }
+
+        [Column("id_medico")]
+        public int IdMedico { get; set; }
+
+        [Column("fecha_registro")]
+        public DateTime FechaRegistro { get; set; }
+
+        [Column("diagnostico")]
+        public string Diagnostico { get; set; }
+
+        [Column("observaciones")]
+        public string Observaciones { get; set; }
+
+        [Column("tratamiento")]
+        public string Tratamiento { get; set; }
+
+        [Column("seguimiento_requerido")]
+        public bool SeguimientoRequerido { get; set; }
+
+        // Relaciones de navegación
+        [ForeignKey("IdPaciente")]
+        public Paciente Paciente { get; set; }
+
+        [ForeignKey("IdMedico")]
+        public Medico Medico { get; set; }
+    }
+
+}
