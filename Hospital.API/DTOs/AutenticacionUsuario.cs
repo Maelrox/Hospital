@@ -13,6 +13,8 @@ namespace Hospital.Controllers.DTOs
         public string NombreUsuario { get; set; }
         public bool Estado { get; set; }
         public string Token { get; internal set; }
-
+        public int? IdMedico { get; set; }
+        public int? IdPaciente { get; set; }
+        public int? IdFamiliar { get; set; }
     }
 }

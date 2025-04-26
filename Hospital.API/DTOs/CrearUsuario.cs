@@ -10,7 +10,7 @@ namespace Hospital.Controllers.DTOs
         public string Telefono { get; set; }
         public string CorreoElectronico { get; set; }
         public string NombreUsuario { get; set; }
-        public string Contraseña { get; set; }
+        public string ContraseÃ±a { get; set; }
         public bool Estado { get; set; }
     }
 }

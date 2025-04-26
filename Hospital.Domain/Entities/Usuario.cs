@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 
 namespace Hospital.Domain.Entities
 {
-
     [Table("usuarios")]
     public class Usuario
     {
@@ -52,10 +51,7 @@ namespace Hospital.Domain.Entities
         [Column("fecha_registro")]
         public DateTime FechaRegistro { get; set; }
 
-        // Relaciones de navegación
-        public ICollection<Paciente> Pacientes { get; set; }
-        public ICollection<Familiar> Familiares { get; set; }
-        public ICollection<Medico> Medicos { get; set; }
+        // Collections
         public ICollection<Auditoria> Auditorias { get; set; }
     }
 }

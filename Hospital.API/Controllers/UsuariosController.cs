@@ -3,6 +3,7 @@ using Hospital.Domain.Interfaces;
 using Hospital.Domain.Services;
 using Microsoft.AspNetCore.Mvc;
 using Hospital.Controllers.DTOs;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Hospital.API.Controllers
 {
@@ -11,11 +12,22 @@ namespace Hospital.API.Controllers
     public class UsuariosController : ControllerBase
     {
         private readonly IRepositorioGenerico<Usuario> _repositorio;
+        private readonly IRepositorioGenerico<Medico> _repositorioMedico;
+        private readonly IRepositorioGenerico<Paciente> _repositorioPaciente;
+        private readonly IRepositorioGenerico<Familiar> _repositorioFamiliar;
         private readonly IJwtService _jwtService;
 
-        public UsuariosController(IRepositorioGenerico<Usuario> repositorio, IJwtService jwtService)
+        public UsuariosController(
+            IRepositorioGenerico<Usuario> repositorio,
+            IRepositorioGenerico<Medico> repositorioMedico,
+            IRepositorioGenerico<Paciente> repositorioPaciente,
+            IRepositorioGenerico<Familiar> repositorioFamiliar,
+            IJwtService jwtService)
         {
             _repositorio = repositorio;
+            _repositorioMedico = repositorioMedico;
+            _repositorioPaciente = repositorioPaciente;
+            _repositorioFamiliar = repositorioFamiliar;
             _jwtService = jwtService;
         }
 
@@ -53,11 +65,7 @@ namespace Hospital.API.Controllers
                 NombreUsuario = crearUsuario.NombreUsuario,
                 Contraseña = passwordHash,
                 Estado = true, // Activo por defecto
-                FechaRegistro = DateTime.UtcNow,
-                Pacientes = new List<Paciente>(),
-                Familiares = new List<Familiar>(),
-                Medicos = new List<Medico>(),
-                Auditorias = new List<Auditoria>()
+                FechaRegistro = DateTime.UtcNow
             };
 
             await _repositorio.CrearAsync(usuario);
@@ -115,7 +123,7 @@ namespace Hospital.API.Controllers
             // Generate JWT token
             var token = _jwtService.GenerateToken(usuario.IdUsuario, usuario.CorreoElectronico);
 
-            var usuarioResponse = new AutenticacionUsuario
+            var usuarioResuesta = new AutenticacionUsuario
             {
                 IdUsuario = usuario.IdUsuario,
                 NombreUsuario = usuario.NombreUsuario,
@@ -129,7 +137,26 @@ namespace Hospital.API.Controllers
                 Token = token
             };
 
-            return Ok(usuarioResponse);
+            switch (usuario.TipoUsuario)
+            {
+                case "Médico":
+                    var medico = (await _repositorioMedico.ObtenerTodosAsync())
+                        .FirstOrDefault(m => m.IdUsuario == usuario.IdUsuario);
+                    usuarioResuesta.IdMedico = medico?.IdMedico;
+                    break;
+                case "Paciente":
+                    var paciente = (await _repositorioPaciente.ObtenerTodosAsync())
+                        .FirstOrDefault(p => p.IdUsuario == usuario.IdUsuario);
+                    usuarioResuesta.IdPaciente = paciente?.IdPaciente;
+                    break;
+                case "Familiar":
+                    var familiar = (await _repositorioFamiliar.ObtenerTodosAsync())
+                        .FirstOrDefault(f => f.IdUsuario == usuario.IdUsuario);
+                    usuarioResuesta.IdFamiliar = familiar?.IdFamiliar;
+                    break;
+            }
+
+            return Ok(usuarioResuesta);
         }
     }
 }
