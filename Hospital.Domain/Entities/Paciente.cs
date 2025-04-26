@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace Hospital.Domain.Entities
 {
@@ -48,6 +49,7 @@ namespace Hospital.Domain.Entities
 
         // Relaciones de navegación (no llevan [Column])
         [ForeignKey("IdUsuario")]
+        [ValidateNever]
         public Usuario Usuario { get; set; }
         public ICollection<Familiar> Familiares { get; set; }
 

@@ -1,10 +1,12 @@
 ﻿using Hospital.Domain.Entities;
 using Hospital.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hospital.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class HistorialesClinicosController : ControllerBase
     {

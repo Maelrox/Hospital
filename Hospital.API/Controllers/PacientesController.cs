@@ -17,12 +17,12 @@ namespace Hospital.API.Controllers
             _repositorio = repositorio;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Paciente>>> ObtenerTodos()
-        {
-            var pacientes = await _repositorio.ObtenerTodosAsync();
-            return Ok(pacientes);
-        }
+            [HttpGet]
+            public async Task<ActionResult<IEnumerable<Paciente>>> ObtenerTodos()
+            {
+                var pacientes = await _repositorio.ObtenerTodosAsync(p => p.Usuario);
+                return Ok(pacientes);
+            }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Paciente>> ObtenerPorId(int id)

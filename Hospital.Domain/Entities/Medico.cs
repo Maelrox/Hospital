@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace Hospital.Domain.Entities
 {
@@ -32,9 +33,13 @@ namespace Hospital.Domain.Entities
 
         // Relaciones
         [ForeignKey("IdUsuario")]
+        [ValidateNever]
         public Usuario Usuario { get; set; }
+        [ValidateNever]
         public ICollection<RelacionMedicoPaciente> RelacionesMedicoPaciente { get; set; }
+        [ValidateNever]
         public ICollection<SugerenciaCuidado> SugerenciasCuidado { get; set; }
+        [ValidateNever]
         public ICollection<HistorialClinico> HistorialesClinicos { get; set; }
     }
 

@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Hospital.Domain.Entities
@@ -42,6 +43,7 @@ namespace Hospital.Domain.Entities
         public string NombreUsuario { get; set; }
 
         [Column("contraseña")]
+        [JsonIgnore]
         public string Contraseña { get; set; }
 
         [Column("estado")]
