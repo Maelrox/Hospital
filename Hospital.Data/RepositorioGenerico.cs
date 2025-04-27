@@ -30,7 +30,7 @@ namespace Hospital.Domain
             {
                 IdUsuario = userId,
                 TipoOperacion = tipoOperacion,
-                FechaHora = DateTime.UtcNow,
+                FechaHora = DateTime.Now,
                 TablaAfectada = typeof(T).Name,
                 DescripcionCambio = descripcion,
                 IpAcceso = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "0.0.0.0"
