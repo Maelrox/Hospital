@@ -13,10 +13,14 @@ namespace Hospital.API.Controllers
     public class SugerenciasCuidadoController : ControllerBase
     {
         private readonly IRepositorioGenerico<SugerenciaCuidado> _repositorio;
+        private readonly IRepositorioGenerico<Paciente> _repositorioPaciente;
 
-        public SugerenciasCuidadoController(IRepositorioGenerico<SugerenciaCuidado> repositorio)
+        public SugerenciasCuidadoController(
+            IRepositorioGenerico<SugerenciaCuidado> repositorio,
+            IRepositorioGenerico<Paciente> repositorioPaciente)
         {
             _repositorio = repositorio;
+            _repositorioPaciente = repositorioPaciente;
         }
 
         [HttpGet]
@@ -32,18 +36,23 @@ namespace Hospital.API.Controllers
 
             if (tipoUsuario == TipoUsuario.Medico)
             {
-                var entidades = await _repositorio.ObtenerTodosAsync();
+                var entidades = await _repositorio.ObtenerTodosAsync(s => s.Paciente, s => s.Paciente.Usuario);
                 return Ok(entidades);
             }
             else if (tipoUsuario == TipoUsuario.Paciente)
             {
-                var entidades = await _repositorio.ObtenerTodosAsync();
-                var sugerenciasPaciente = entidades.Where(s => s.IdPaciente == idUsuario);
+                var paciente = await _repositorioPaciente.ObtenerPorCampoAsync(p => p.IdUsuario == idUsuario);
+                if (paciente == null)
+                {
+                    return Forbid();
+                }
+                var entidades = await _repositorio.ObtenerTodosAsync(s => s.Paciente, s => s.Paciente.Usuario);
+                var sugerenciasPaciente = entidades.Where(s => s.IdPaciente == paciente.IdPaciente);
                 return Ok(sugerenciasPaciente);
             }
             else if (tipoUsuario == TipoUsuario.Familiar)
             {
-                var entidades = await _repositorio.ObtenerTodosAsync();
+                var entidades = await _repositorio.ObtenerTodosAsync(s => s.Paciente, s => s.Paciente.Usuario);
                 return Ok(entidades);
             }
             else
@@ -63,7 +72,8 @@ namespace Hospital.API.Controllers
 
             var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-            var entidad = await _repositorio.ObtenerPorIdAsync(id);
+            var entidades = await _repositorio.ObtenerTodosAsync(s => s.Paciente, s => s.Paciente.Usuario);
+            var entidad = entidades.FirstOrDefault(s => s.IdSugerencia == id);
             if (entidad == null)
                 return NotFound();
 

@@ -69,7 +69,7 @@ namespace Hospital.API.Controllers
             }
 
             // Validar tipo de usuario
-            if (!new[] { "Médico", "Paciente", "Familiar" }.Contains(crearUsuario.TipoUsuario))
+            if (!new[] { "Medico", "Paciente", "Familiar" }.Contains(crearUsuario.TipoUsuario))
             {
                 return BadRequest(new { error = "Tipo de usuario inválido. Debe ser 'Médico', 'Paciente' o 'Familiar'." });
             }

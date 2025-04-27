@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace Hospital.Domain.Entities
 {
@@ -39,9 +40,11 @@ namespace Hospital.Domain.Entities
 
         // Relaciones de navegación
         [ForeignKey("IdPaciente")]
+        [ValidateNever]
         public Paciente Paciente { get; set; }
 
         [ForeignKey("IdMedico")]
+        [ValidateNever]
         public Medico Medico { get; set; }
     }
 

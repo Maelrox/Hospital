@@ -14,13 +14,19 @@ namespace Hospital.API.Controllers
     {
         private readonly IRepositorioGenerico<HistorialClinico> _repositorio;
         private readonly IRepositorioGenerico<RelacionMedicoPaciente> _repositorioRelacion;
+        private readonly IRepositorioGenerico<Medico> _repositorioMedico;
+        private readonly IRepositorioGenerico<Paciente> _repositorioPaciente;
 
         public HistorialesClinicosController(
             IRepositorioGenerico<HistorialClinico> repositorio,
-            IRepositorioGenerico<RelacionMedicoPaciente> repositorioRelacion)
+            IRepositorioGenerico<RelacionMedicoPaciente> repositorioRelacion,
+            IRepositorioGenerico<Medico> repositorioMedico,
+            IRepositorioGenerico<Paciente> repositorioPaciente)
         {
             _repositorio = repositorio;
             _repositorioRelacion = repositorioRelacion;
+            _repositorioMedico = repositorioMedico;
+            _repositorioPaciente = repositorioPaciente;
         }
 
         [HttpGet]
@@ -31,14 +37,14 @@ namespace Hospital.API.Controllers
             {
                 return Forbid();
             }
-
+    
             var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
+            var paciente = await _repositorioPaciente.ObtenerPorCampoAsync(p => p.IdUsuario == idUsuario);
             var historiales = await _repositorio.ObtenerTodosAsync(h => h.Paciente, h => h.Paciente.Usuario);
 
             if (tipoUsuario == TipoUsuario.Paciente)
             {
-                historiales = historiales.Where(h => h.IdPaciente == idUsuario);
+                historiales = historiales.Where(h => h.IdPaciente == paciente.IdPaciente);
             }
             else if (tipoUsuario == TipoUsuario.Familiar)
             {
@@ -85,8 +91,14 @@ namespace Hospital.API.Controllers
             }
 
             var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var medico = await _repositorioMedico.ObtenerPorCampoAsync(m => m.IdUsuario == idUsuario);
+            if (medico == null)
+            {
+                return Forbid();
+            }
+
             entidad.FechaRegistro = DateTime.Now;
-            entidad.IdMedico = idUsuario;
+            entidad.IdMedico = medico.IdMedico;
 
             try
             {
@@ -96,7 +108,7 @@ namespace Hospital.API.Controllers
                 var relaciones = await _repositorioRelacion.ObtenerTodosAsync();
                 var relacionExistente = relaciones.FirstOrDefault(r => 
                     r.IdPaciente == entidad.IdPaciente && 
-                    r.IdMedico == idUsuario && 
+                    r.IdMedico == medico.IdMedico && 
                     r.Estado == true
                 );
 
@@ -104,7 +116,7 @@ namespace Hospital.API.Controllers
                 {
                     var nuevaRelacion = new RelacionMedicoPaciente
                     {
-                        IdMedico = idUsuario,
+                        IdMedico = medico.IdMedico,
                         IdPaciente = entidad.IdPaciente,
                         FechaAsignacion = DateTime.Now,
                         Estado = true
