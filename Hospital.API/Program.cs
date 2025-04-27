@@ -3,6 +3,7 @@ using Hospital.Domain;
 using Hospital.Domain.Configuration;
 using Hospital.Domain.Interfaces;
 using Hospital.Domain.Services;
+using Hospital.API.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -76,6 +77,9 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 
 app.UseHttpsRedirection();
+
+// Add global exception handling middleware
+app.UseGlobalExceptionMiddleware();
 
 app.UseAuthentication();
 app.UseAuthorization();

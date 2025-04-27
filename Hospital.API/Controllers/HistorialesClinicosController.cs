@@ -13,13 +13,16 @@ namespace Hospital.API.Controllers
     {
         private readonly IRepositorioGenerico<HistorialClinico> _repositorio;
         private readonly IRepositorioGenerico<Paciente> _repositorioPaciente;
+        private readonly IRepositorioGenerico<RelacionMedicoPaciente> _repositorioRelacion;
 
         public HistorialesClinicosController(
             IRepositorioGenerico<HistorialClinico> repositorio,
-            IRepositorioGenerico<Paciente> repositorioPaciente)
+            IRepositorioGenerico<Paciente> repositorioPaciente,
+            IRepositorioGenerico<RelacionMedicoPaciente> repositorioRelacion)
         {
             _repositorio = repositorio;
             _repositorioPaciente = repositorioPaciente;
+            _repositorioRelacion = repositorioRelacion;
         }
 
         [HttpGet]
@@ -74,6 +77,28 @@ namespace Hospital.API.Controllers
         {
             entidad.FechaRegistro = DateTime.Now;
             await _repositorio.CrearAsync(entidad);
+
+            // Get all relationships for this patient
+            var relaciones = await _repositorioRelacion.ObtenerTodosAsync();
+            var relacionExistente = relaciones.FirstOrDefault(r => 
+                r.IdPaciente == entidad.IdPaciente && 
+                r.IdMedico == entidad.IdMedico && 
+                r.Estado == true
+            );
+
+            if (relacionExistente == null)
+            {
+                var nuevaRelacion = new RelacionMedicoPaciente
+                {
+                    IdMedico = entidad.IdMedico,
+                    IdPaciente = entidad.IdPaciente,
+                    FechaAsignacion = DateTime.Now,
+                    Estado = true
+                };
+
+                await _repositorioRelacion.CrearAsync(nuevaRelacion);
+            }
+
             return CreatedAtAction(nameof(ObtenerPorId), new { id = entidad.IdHistorial }, entidad);
         }
 

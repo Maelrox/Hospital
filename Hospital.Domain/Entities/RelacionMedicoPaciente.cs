@@ -22,7 +22,7 @@ namespace Hospital.Domain.Entities
         [Column("id_paciente")]
         public int IdPaciente { get; set; }
 
-        [Column("fecha_asignacion")]
+        [Column("fecha_asignacion", TypeName = "timestamp without time zone")]
         public DateTime FechaAsignacion { get; set; }
 
         [Column("estado")]

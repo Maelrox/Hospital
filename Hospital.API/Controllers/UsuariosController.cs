@@ -50,6 +50,30 @@ namespace Hospital.API.Controllers
         [HttpPost]
         public async Task<ActionResult> Crear([FromBody] CrearUsuario crearUsuario)
         {
+            // Validar campos únicos
+            var usuarios = await _repositorio.ObtenerTodosAsync();
+            
+            if (usuarios.Any(u => u.NombreUsuario == crearUsuario.NombreUsuario))
+            {
+                return BadRequest(new { error = "El nombre de usuario ya está en uso." });
+            }
+
+            if (usuarios.Any(u => u.DocumentoIdentidad == crearUsuario.DocumentoIdentidad))
+            {
+                return BadRequest(new { error = "El documento de identidad ya está registrado." });
+            }
+
+            if (usuarios.Any(u => u.CorreoElectronico == crearUsuario.CorreoElectronico))
+            {
+                return BadRequest(new { error = "El correo electrónico ya está registrado." });
+            }
+
+            // Validar tipo de usuario
+            if (!new[] { "Médico", "Paciente", "Familiar" }.Contains(crearUsuario.TipoUsuario))
+            {
+                return BadRequest(new { error = "Tipo de usuario inválido. Debe ser 'Médico', 'Paciente' o 'Familiar'." });
+            }
+
             // Encriptar la contraseña
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(crearUsuario.Contraseña);
 

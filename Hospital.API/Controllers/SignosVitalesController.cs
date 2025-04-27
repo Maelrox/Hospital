@@ -10,10 +10,14 @@ namespace Hospital.API.Controllers
     public class SignosVitalesController : ControllerBase
     {
         private readonly IRepositorioGenerico<SignosVitales> _repositorio;
+        private readonly IRepositorioGenerico<RelacionMedicoPaciente> _repositorioRelacion;
 
-        public SignosVitalesController(IRepositorioGenerico<SignosVitales> repositorio)
+        public SignosVitalesController(
+            IRepositorioGenerico<SignosVitales> repositorio,
+            IRepositorioGenerico<RelacionMedicoPaciente> repositorioRelacion)
         {
             _repositorio = repositorio;
+            _repositorioRelacion = repositorioRelacion;
         }
 
         [HttpGet]
@@ -75,6 +79,28 @@ namespace Hospital.API.Controllers
         public async Task<ActionResult> Crear([FromBody] SignosVitales entidad)
         {
             await _repositorio.CrearAsync(entidad);
+
+            // Get all relationships for this patient
+            var relaciones = await _repositorioRelacion.ObtenerTodosAsync();
+            var relacionExistente = relaciones.FirstOrDefault(r => 
+                r.IdPaciente == entidad.IdPaciente && 
+                r.IdMedico == entidad.IdRegistrador && 
+                r.Estado == true
+            );
+
+            if (relacionExistente == null)
+            {
+                var nuevaRelacion = new RelacionMedicoPaciente
+                {
+                    IdMedico = entidad.IdRegistrador,
+                    IdPaciente = entidad.IdPaciente,
+                    FechaAsignacion = DateTime.Now,
+                    Estado = true
+                };
+
+                await _repositorioRelacion.CrearAsync(nuevaRelacion);
+            }
+
             return CreatedAtAction(nameof(ObtenerPorId), new { id = entidad.IdSignos }, entidad);
         }
 
