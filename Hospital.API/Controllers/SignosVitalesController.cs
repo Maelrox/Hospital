@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Hospital.API.DTOs;
 using System.Security.Claims;
+using Hospital.Domain.Enums;
 
 namespace Hospital.API.Controllers
 {
@@ -15,6 +16,7 @@ namespace Hospital.API.Controllers
         private readonly IRepositorioGenerico<SignosVitales> _repositorio;
         private readonly IRepositorioGenerico<RelacionMedicoPaciente> _repositorioRelacion;
         private readonly IRepositorioGenerico<Familiar> _repositorioFamiliar;
+        private readonly IRepositorioGenerico<Paciente> _repositorioPaciente;
 
         public SignosVitalesController(
             IRepositorioGenerico<SignosVitales> repositorio,
@@ -29,16 +31,22 @@ namespace Hospital.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<SignosVitalesResponse>>> ObtenerTodos()
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario))
+            {
+                return Forbid();
+            }
+
             var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
             var signosVitales = await _repositorio.ObtenerTodosAsync(s => s.Paciente, s => s.Paciente.Usuario);
             
-            if (tipoUsuario == "Paciente")
+            if (tipoUsuario == TipoUsuario.Paciente)
             {
-                signosVitales = signosVitales.Where(s => s.IdPaciente == idUsuario);
+                var paciente = await _repositorioPaciente.ObtenerPorCampoAsync(p => p.IdUsuario == idUsuario);
+                signosVitales = signosVitales.Where(s => s.IdPaciente == paciente.IdPaciente);
             }
-            else if (tipoUsuario == "Familiar")
+            else if (tipoUsuario == TipoUsuario.Familiar)
             {
                 var familiar = await _repositorioFamiliar.ObtenerPorCampoAsync(f => f.IdUsuario == idUsuario);
                 if (familiar == null)
@@ -73,22 +81,27 @@ namespace Hospital.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<SignosVitalesResponse>> ObtenerPorId(int id)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario))
+            {
+                return Forbid();
+            }
+
             var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
             var signosVitales = await _repositorio.ObtenerPorIdAsync(id);
             if (signosVitales == null)
                 return NotFound();
 
-            if (tipoUsuario == "Médico")
+            if (tipoUsuario == TipoUsuario.Medico)
             {
                 // Médicos can see all records
             }
-            else if (tipoUsuario == "Paciente" && signosVitales.IdPaciente != idUsuario)
+            else if (tipoUsuario == TipoUsuario.Paciente && signosVitales.IdPaciente != idUsuario)
             {
                 return Forbid();
             }
-            else if (tipoUsuario == "Familiar")
+            else if (tipoUsuario == TipoUsuario.Familiar)
             {
                 var familiar = await _repositorioFamiliar.ObtenerPorCampoAsync(f => f.IdUsuario == idUsuario);
                 if (familiar == null || familiar.IdPaciente != signosVitales.IdPaciente)
@@ -122,15 +135,20 @@ namespace Hospital.API.Controllers
         [HttpPost]
         public async Task<ActionResult> Crear([FromBody] SignosVitales entidad)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario))
+            {
+                return Forbid();
+            }
+
             var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-            if (tipoUsuario == "Médico")
+            if (tipoUsuario == TipoUsuario.Medico)
             {
                 entidad.IdRegistrador = idUsuario;
-                entidad.TipoRegistrador = "Médico";
+                entidad.TipoRegistrador = "Medico";
             }
-            else if (tipoUsuario == "Familiar")
+            else if (tipoUsuario == TipoUsuario.Familiar)
             {
                 var familiar = await _repositorioFamiliar.ObtenerPorCampoAsync(f => f.IdUsuario == idUsuario);
                 if (familiar == null || !familiar.AutorizadoRegistroSignos)
@@ -147,29 +165,8 @@ namespace Hospital.API.Controllers
 
             try
             {
+                entidad.FechaRegistro = DateTime.Now;
                 await _repositorio.CrearAsync(entidad);
-
-                // Get all relationships for this patient
-                var relaciones = await _repositorioRelacion.ObtenerTodosAsync();
-                var relacionExistente = relaciones.FirstOrDefault(r => 
-                    r.IdPaciente == entidad.IdPaciente && 
-                    r.IdMedico == entidad.IdRegistrador && 
-                    r.Estado == true
-                );
-
-                if (relacionExistente == null)
-                {
-                    var nuevaRelacion = new RelacionMedicoPaciente
-                    {
-                        IdMedico = entidad.IdRegistrador,
-                        IdPaciente = entidad.IdPaciente,
-                        FechaAsignacion = DateTime.Now,
-                        Estado = true
-                    };
-
-                    await _repositorioRelacion.CrearAsync(nuevaRelacion);
-                }
-
                 return CreatedAtAction(nameof(ObtenerPorId), new { id = entidad.IdSignos }, entidad);
             }
             catch (Exception ex)
@@ -181,8 +178,8 @@ namespace Hospital.API.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult> Actualizar(int id, [FromBody] SignosVitales entidad)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (tipoUsuario != "Médico")
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario) || tipoUsuario != TipoUsuario.Medico)
             {
                 return Forbid();
             }
@@ -196,8 +193,8 @@ namespace Hospital.API.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Eliminar(int id)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (tipoUsuario != "Médico")
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario) || tipoUsuario != TipoUsuario.Medico)
             {
                 return Forbid();
             }

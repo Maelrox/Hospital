@@ -3,6 +3,7 @@ using Hospital.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Hospital.Domain.Enums;
 
 namespace Hospital.API.Controllers
 {
@@ -21,21 +22,26 @@ namespace Hospital.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<SugerenciaCuidado>>> ObtenerTodos()
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario))
+            {
+                return Forbid();
+            }
+
             var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-            if (tipoUsuario == "Médico")
+            if (tipoUsuario == TipoUsuario.Medico)
             {
                 var entidades = await _repositorio.ObtenerTodosAsync();
                 return Ok(entidades);
             }
-            else if (tipoUsuario == "Paciente")
+            else if (tipoUsuario == TipoUsuario.Paciente)
             {
                 var entidades = await _repositorio.ObtenerTodosAsync();
                 var sugerenciasPaciente = entidades.Where(s => s.IdPaciente == idUsuario);
                 return Ok(sugerenciasPaciente);
             }
-            else if (tipoUsuario == "Familiar")
+            else if (tipoUsuario == TipoUsuario.Familiar)
             {
                 var entidades = await _repositorio.ObtenerTodosAsync();
                 return Ok(entidades);
@@ -49,16 +55,21 @@ namespace Hospital.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<SugerenciaCuidado>> ObtenerPorId(int id)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario))
+            {
+                return Forbid();
+            }
+
             var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
             var entidad = await _repositorio.ObtenerPorIdAsync(id);
             if (entidad == null)
                 return NotFound();
 
-            if (tipoUsuario == "Médico" || 
-                (tipoUsuario == "Paciente" && entidad.IdPaciente == idUsuario) ||
-                tipoUsuario == "Familiar")
+            if (tipoUsuario == TipoUsuario.Medico || 
+                (tipoUsuario == TipoUsuario.Paciente && entidad.IdPaciente == idUsuario) ||
+                tipoUsuario == TipoUsuario.Familiar)
             {
                 return Ok(entidad);
             }
@@ -69,8 +80,8 @@ namespace Hospital.API.Controllers
         [HttpPost]
         public async Task<ActionResult> Crear([FromBody] SugerenciaCuidado entidad)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (tipoUsuario != "Médico")
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario) || tipoUsuario != TipoUsuario.Medico)
             {
                 return Forbid();
             }
@@ -82,8 +93,8 @@ namespace Hospital.API.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult> Actualizar(int id, [FromBody] SugerenciaCuidado entidad)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (tipoUsuario != "Médico")
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario) || tipoUsuario != TipoUsuario.Medico)
             {
                 return Forbid();
             }
@@ -97,8 +108,8 @@ namespace Hospital.API.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Eliminar(int id)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (tipoUsuario != "Médico")
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario) || tipoUsuario != TipoUsuario.Medico)
             {
                 return Forbid();
             }

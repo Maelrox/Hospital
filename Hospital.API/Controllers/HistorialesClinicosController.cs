@@ -2,8 +2,8 @@
 using Hospital.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Hospital.API.DTOs;
 using System.Security.Claims;
+using Hospital.Domain.Enums;
 
 namespace Hospital.API.Controllers
 {
@@ -13,134 +13,119 @@ namespace Hospital.API.Controllers
     public class HistorialesClinicosController : ControllerBase
     {
         private readonly IRepositorioGenerico<HistorialClinico> _repositorio;
-        private readonly IRepositorioGenerico<Paciente> _repositorioPaciente;
         private readonly IRepositorioGenerico<RelacionMedicoPaciente> _repositorioRelacion;
 
         public HistorialesClinicosController(
             IRepositorioGenerico<HistorialClinico> repositorio,
-            IRepositorioGenerico<Paciente> repositorioPaciente,
             IRepositorioGenerico<RelacionMedicoPaciente> repositorioRelacion)
         {
             _repositorio = repositorio;
-            _repositorioPaciente = repositorioPaciente;
             _repositorioRelacion = repositorioRelacion;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<HistorialClinicoResponse>>> ObtenerTodos()
+        public async Task<ActionResult<IEnumerable<HistorialClinico>>> ObtenerTodos()
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-            if (tipoUsuario == "Familiar")
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario))
             {
                 return Forbid();
             }
 
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
             var historiales = await _repositorio.ObtenerTodosAsync(h => h.Paciente, h => h.Paciente.Usuario);
-            
-            if (tipoUsuario == "Paciente")
+
+            if (tipoUsuario == TipoUsuario.Paciente)
             {
                 historiales = historiales.Where(h => h.IdPaciente == idUsuario);
             }
-
-            var response = historiales.Select(h => new HistorialClinicoResponse
-            {
-                IdHistorial = h.IdHistorial,
-                IdPaciente = h.IdPaciente,
-                IdMedico = h.IdMedico,
-                FechaRegistro = h.FechaRegistro,
-                Diagnostico = h.Diagnostico,
-                Observaciones = h.Observaciones,
-                Tratamiento = h.Tratamiento,
-                SeguimientoRequerido = h.SeguimientoRequerido,
-                NombrePaciente = h.Paciente.Usuario.Nombre,
-                ApellidoPaciente = h.Paciente.Usuario.Apellido,
-                Documento = h.Paciente.Usuario.DocumentoIdentidad
-            });
-
-            return Ok(response);
-        }
-
-        [HttpGet("{id}")]
-        public async Task<ActionResult<HistorialClinicoResponse>> ObtenerPorId(int id)
-        {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-            if (tipoUsuario == "Familiar")
+            else if (tipoUsuario == TipoUsuario.Familiar)
             {
                 return Forbid();
             }
+
+            return Ok(historiales);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<HistorialClinico>> ObtenerPorId(int id)
+        {
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario))
+            {
+                return Forbid();
+            }
+
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
             var historial = await _repositorio.ObtenerPorIdAsync(id);
             if (historial == null)
                 return NotFound();
 
-            if (tipoUsuario == "Paciente" && historial.IdPaciente != idUsuario)
+            if (tipoUsuario == TipoUsuario.Paciente && historial.IdPaciente != idUsuario)
+            {
+                return Forbid();
+            }
+            else if (tipoUsuario == TipoUsuario.Familiar)
             {
                 return Forbid();
             }
 
-            var response = new HistorialClinicoResponse
-            {
-                IdHistorial = historial.IdHistorial,
-                IdPaciente = historial.IdPaciente,
-                IdMedico = historial.IdMedico,
-                FechaRegistro = historial.FechaRegistro,
-                Diagnostico = historial.Diagnostico,
-                Observaciones = historial.Observaciones,
-                Tratamiento = historial.Tratamiento,
-                SeguimientoRequerido = historial.SeguimientoRequerido,
-                NombrePaciente = historial.Paciente.Usuario.Nombre,
-                ApellidoPaciente = historial.Paciente.Usuario.Apellido,
-                Documento = historial.Paciente.Usuario.DocumentoIdentidad
-            };
-
-            return Ok(response);
+            return Ok(historial);
         }
 
         [HttpPost]
         public async Task<ActionResult> Crear([FromBody] HistorialClinico entidad)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (tipoUsuario != "Médico")
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario) || tipoUsuario != TipoUsuario.Medico)
             {
                 return Forbid();
             }
 
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             entidad.FechaRegistro = DateTime.Now;
-            await _repositorio.CrearAsync(entidad);
+            entidad.IdMedico = idUsuario;
 
-            // Get all relationships for this patient
-            var relaciones = await _repositorioRelacion.ObtenerTodosAsync();
-            var relacionExistente = relaciones.FirstOrDefault(r => 
-                r.IdPaciente == entidad.IdPaciente && 
-                r.IdMedico == entidad.IdMedico && 
-                r.Estado == true
-            );
-
-            if (relacionExistente == null)
+            try
             {
-                var nuevaRelacion = new RelacionMedicoPaciente
+                await _repositorio.CrearAsync(entidad);
+
+                // Get all relationships for this patient
+                var relaciones = await _repositorioRelacion.ObtenerTodosAsync();
+                var relacionExistente = relaciones.FirstOrDefault(r => 
+                    r.IdPaciente == entidad.IdPaciente && 
+                    r.IdMedico == idUsuario && 
+                    r.Estado == true
+                );
+
+                if (relacionExistente == null)
                 {
-                    IdMedico = entidad.IdMedico,
-                    IdPaciente = entidad.IdPaciente,
-                    FechaAsignacion = DateTime.Now,
-                    Estado = true
-                };
+                    var nuevaRelacion = new RelacionMedicoPaciente
+                    {
+                        IdMedico = idUsuario,
+                        IdPaciente = entidad.IdPaciente,
+                        FechaAsignacion = DateTime.Now,
+                        Estado = true
+                    };
 
-                await _repositorioRelacion.CrearAsync(nuevaRelacion);
+                    await _repositorioRelacion.CrearAsync(nuevaRelacion);
+                }
+
+                return CreatedAtAction(nameof(ObtenerPorId), new { id = entidad.IdHistorial }, entidad);
             }
-
-            return CreatedAtAction(nameof(ObtenerPorId), new { id = entidad.IdHistorial }, entidad);
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpPut("{id}")]
         public async Task<ActionResult> Actualizar(int id, [FromBody] HistorialClinico entidad)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (tipoUsuario != "Médico")
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario) || tipoUsuario != TipoUsuario.Medico)
             {
                 return Forbid();
             }
@@ -154,8 +139,8 @@ namespace Hospital.API.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Eliminar(int id)
         {
-            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (tipoUsuario != "Médico")
+            var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario) || tipoUsuario != TipoUsuario.Medico)
             {
                 return Forbid();
             }

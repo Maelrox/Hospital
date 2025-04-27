@@ -163,7 +163,7 @@ namespace Hospital.API.Controllers
 
             switch (usuario.TipoUsuario)
             {
-                case "Médico":
+                case "Medico":
                     var medico = (await _repositorioMedico.ObtenerTodosAsync())
                         .FirstOrDefault(m => m.IdUsuario == usuario.IdUsuario);
                     usuarioResuesta.IdMedico = medico?.IdMedico;
