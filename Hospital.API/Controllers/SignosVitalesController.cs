@@ -21,11 +21,13 @@ namespace Hospital.API.Controllers
         public SignosVitalesController(
             IRepositorioGenerico<SignosVitales> repositorio,
             IRepositorioGenerico<RelacionMedicoPaciente> repositorioRelacion,
-            IRepositorioGenerico<Familiar> repositorioFamiliar)
+            IRepositorioGenerico<Familiar> repositorioFamiliar,
+            IRepositorioGenerico<Paciente> repositorioPaciente)
         {
             _repositorio = repositorio;
             _repositorioRelacion = repositorioRelacion;
             _repositorioFamiliar = repositorioFamiliar;
+            _repositorioPaciente = repositorioPaciente;
         }
 
         [HttpGet]
@@ -95,7 +97,7 @@ namespace Hospital.API.Controllers
 
             if (tipoUsuario == TipoUsuario.Medico)
             {
-                // Médicos can see all records
+                
             }
             else if (tipoUsuario == TipoUsuario.Paciente && signosVitales.IdPaciente != idUsuario)
             {
@@ -105,6 +107,13 @@ namespace Hospital.API.Controllers
             {
                 var familiar = await _repositorioFamiliar.ObtenerPorCampoAsync(f => f.IdUsuario == idUsuario);
                 if (familiar == null || familiar.IdPaciente != signosVitales.IdPaciente)
+                {
+                    return Forbid();
+                }
+            } else if (tipoUsuario == TipoUsuario.Paciente)
+            {
+                var paciente = await _repositorioPaciente.ObtenerPorCampoAsync(p => p.IdUsuario == idUsuario);
+                if (paciente == null || signosVitales.IdPaciente != paciente.IdPaciente)
                 {
                     return Forbid();
                 }
@@ -158,7 +167,14 @@ namespace Hospital.API.Controllers
                 entidad.IdRegistrador = idUsuario;
                 entidad.TipoRegistrador = "Familiar";
             }
-            else
+            else if (tipoUsuario == TipoUsuario.Paciente)
+            {
+                var paciente = await _repositorioPaciente.ObtenerPorCampoAsync(p => p.IdUsuario == idUsuario);
+                if (paciente == null)
+                {
+                    return Forbid();
+                }
+            } else
             {
                 return Forbid();
             }
