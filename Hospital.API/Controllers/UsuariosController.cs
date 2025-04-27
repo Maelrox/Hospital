@@ -65,7 +65,7 @@ namespace Hospital.API.Controllers
                 NombreUsuario = crearUsuario.NombreUsuario,
                 Contraseña = passwordHash,
                 Estado = true, // Activo por defecto
-                FechaRegistro = DateTime.UtcNow
+                FechaRegistro = DateTime.Now
             };
 
             await _repositorio.CrearAsync(usuario);

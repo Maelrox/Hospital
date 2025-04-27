@@ -21,7 +21,7 @@ namespace Hospital.Domain.Entities
         [Column("tipo_operacion")]
         public string TipoOperacion { get; set; }
 
-        [Column("fecha_hora")]
+        [Column("fecha_hora", TypeName = "timestamp without time zone")]
         public DateTime FechaHora { get; set; }
 
         [Column("tabla_afectada")]

@@ -48,7 +48,7 @@ namespace Hospital.Domain.Entities
         [Column("estado")]
         public bool Estado { get; set; }
 
-        [Column("fecha_registro")]
+        [Column("fecha_registro", TypeName = "timestamp without time zone")]
         public DateTime FechaRegistro { get; set; }
 
         // Collections
