@@ -1,29 +1,53 @@
 ﻿using Hospital.Domain.Entities;
 using Hospital.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Hospital.API.DTOs;
+using System.Security.Claims;
 
 namespace Hospital.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class SignosVitalesController : ControllerBase
     {
         private readonly IRepositorioGenerico<SignosVitales> _repositorio;
         private readonly IRepositorioGenerico<RelacionMedicoPaciente> _repositorioRelacion;
+        private readonly IRepositorioGenerico<Familiar> _repositorioFamiliar;
 
         public SignosVitalesController(
             IRepositorioGenerico<SignosVitales> repositorio,
-            IRepositorioGenerico<RelacionMedicoPaciente> repositorioRelacion)
+            IRepositorioGenerico<RelacionMedicoPaciente> repositorioRelacion,
+            IRepositorioGenerico<Familiar> repositorioFamiliar)
         {
             _repositorio = repositorio;
             _repositorioRelacion = repositorioRelacion;
+            _repositorioFamiliar = repositorioFamiliar;
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<SignosVitalesResponse>>> ObtenerTodos()
         {
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
             var signosVitales = await _repositorio.ObtenerTodosAsync(s => s.Paciente, s => s.Paciente.Usuario);
+            
+            if (tipoUsuario == "Paciente")
+            {
+                signosVitales = signosVitales.Where(s => s.IdPaciente == idUsuario);
+            }
+            else if (tipoUsuario == "Familiar")
+            {
+                var familiar = await _repositorioFamiliar.ObtenerPorCampoAsync(f => f.IdUsuario == idUsuario);
+                if (familiar == null)
+                {
+                    return Forbid();
+                }
+                signosVitales = signosVitales.Where(s => s.IdPaciente == familiar.IdPaciente);
+            }
+
             var response = signosVitales.Select(s => new SignosVitalesResponse
             {
                 IdSignos = s.IdSignos,
@@ -49,9 +73,29 @@ namespace Hospital.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<SignosVitalesResponse>> ObtenerPorId(int id)
         {
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
             var signosVitales = await _repositorio.ObtenerPorIdAsync(id);
             if (signosVitales == null)
                 return NotFound();
+
+            if (tipoUsuario == "Médico")
+            {
+                // Médicos can see all records
+            }
+            else if (tipoUsuario == "Paciente" && signosVitales.IdPaciente != idUsuario)
+            {
+                return Forbid();
+            }
+            else if (tipoUsuario == "Familiar")
+            {
+                var familiar = await _repositorioFamiliar.ObtenerPorCampoAsync(f => f.IdUsuario == idUsuario);
+                if (familiar == null || familiar.IdPaciente != signosVitales.IdPaciente)
+                {
+                    return Forbid();
+                }
+            }
 
             var response = new SignosVitalesResponse
             {
@@ -78,35 +122,71 @@ namespace Hospital.API.Controllers
         [HttpPost]
         public async Task<ActionResult> Crear([FromBody] SignosVitales entidad)
         {
-            await _repositorio.CrearAsync(entidad);
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-            // Get all relationships for this patient
-            var relaciones = await _repositorioRelacion.ObtenerTodosAsync();
-            var relacionExistente = relaciones.FirstOrDefault(r => 
-                r.IdPaciente == entidad.IdPaciente && 
-                r.IdMedico == entidad.IdRegistrador && 
-                r.Estado == true
-            );
-
-            if (relacionExistente == null)
+            if (tipoUsuario == "Médico")
             {
-                var nuevaRelacion = new RelacionMedicoPaciente
+                entidad.IdRegistrador = idUsuario;
+                entidad.TipoRegistrador = "Médico";
+            }
+            else if (tipoUsuario == "Familiar")
+            {
+                var familiar = await _repositorioFamiliar.ObtenerPorCampoAsync(f => f.IdUsuario == idUsuario);
+                if (familiar == null || !familiar.AutorizadoRegistroSignos)
                 {
-                    IdMedico = entidad.IdRegistrador,
-                    IdPaciente = entidad.IdPaciente,
-                    FechaAsignacion = DateTime.Now,
-                    Estado = true
-                };
-
-                await _repositorioRelacion.CrearAsync(nuevaRelacion);
+                    return BadRequest(new { error = "No está autorizado para registrar signos vitales." });
+                }
+                entidad.IdRegistrador = idUsuario;
+                entidad.TipoRegistrador = "Familiar";
+            }
+            else
+            {
+                return Forbid();
             }
 
-            return CreatedAtAction(nameof(ObtenerPorId), new { id = entidad.IdSignos }, entidad);
+            try
+            {
+                await _repositorio.CrearAsync(entidad);
+
+                // Get all relationships for this patient
+                var relaciones = await _repositorioRelacion.ObtenerTodosAsync();
+                var relacionExistente = relaciones.FirstOrDefault(r => 
+                    r.IdPaciente == entidad.IdPaciente && 
+                    r.IdMedico == entidad.IdRegistrador && 
+                    r.Estado == true
+                );
+
+                if (relacionExistente == null)
+                {
+                    var nuevaRelacion = new RelacionMedicoPaciente
+                    {
+                        IdMedico = entidad.IdRegistrador,
+                        IdPaciente = entidad.IdPaciente,
+                        FechaAsignacion = DateTime.Now,
+                        Estado = true
+                    };
+
+                    await _repositorioRelacion.CrearAsync(nuevaRelacion);
+                }
+
+                return CreatedAtAction(nameof(ObtenerPorId), new { id = entidad.IdSignos }, entidad);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpPut("{id}")]
         public async Task<ActionResult> Actualizar(int id, [FromBody] SignosVitales entidad)
         {
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (tipoUsuario != "Médico")
+            {
+                return Forbid();
+            }
+
             if (id != entidad.IdSignos)
                 return BadRequest();
             await _repositorio.ActualizarAsync(entidad);
@@ -116,6 +196,12 @@ namespace Hospital.API.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Eliminar(int id)
         {
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (tipoUsuario != "Médico")
+            {
+                return Forbid();
+            }
+
             await _repositorio.EliminarAsync(id);
             return NoContent();
         }

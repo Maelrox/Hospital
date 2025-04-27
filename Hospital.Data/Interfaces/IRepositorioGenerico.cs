@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -15,6 +15,6 @@ namespace Hospital.Domain.Interfaces
         Task CrearAsync(T entidad);
         Task ActualizarAsync(T entidad);
         Task EliminarAsync(object id);
+        Task<T> ObtenerPorCampoAsync(Expression<Func<T, bool>> predicado, params Expression<Func<T, object>>[] includes);
     }
-
-}
+} 

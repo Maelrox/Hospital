@@ -95,7 +95,7 @@ namespace Hospital.API.Controllers
             await _repositorio.CrearAsync(usuario);
 
             // Generate JWT token
-            var token = _jwtService.GenerateToken(usuario.IdUsuario, usuario.CorreoElectronico);
+            var token = _jwtService.GenerateToken(usuario.IdUsuario, usuario.CorreoElectronico, usuario.TipoUsuario);
 
             var usuarioResponse = new AutenticacionUsuario
             {
@@ -145,7 +145,7 @@ namespace Hospital.API.Controllers
                 return Unauthorized("Contraseña incorrecta");
 
             // Generate JWT token
-            var token = _jwtService.GenerateToken(usuario.IdUsuario, usuario.CorreoElectronico);
+            var token = _jwtService.GenerateToken(usuario.IdUsuario, usuario.CorreoElectronico, usuario.TipoUsuario);
 
             var usuarioResuesta = new AutenticacionUsuario
             {
@@ -177,6 +177,7 @@ namespace Hospital.API.Controllers
                     var familiar = (await _repositorioFamiliar.ObtenerTodosAsync())
                         .FirstOrDefault(f => f.IdUsuario == usuario.IdUsuario);
                     usuarioResuesta.IdFamiliar = familiar?.IdFamiliar;
+                    usuarioResuesta.IdPaciente = familiar?.IdPaciente;
                     break;
             }
 

@@ -3,6 +3,7 @@ using Hospital.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Hospital.API.DTOs;
+using System.Security.Claims;
 
 namespace Hospital.API.Controllers
 {
@@ -28,7 +29,21 @@ namespace Hospital.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<HistorialClinicoResponse>>> ObtenerTodos()
         {
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+            if (tipoUsuario == "Familiar")
+            {
+                return Forbid();
+            }
+
             var historiales = await _repositorio.ObtenerTodosAsync(h => h.Paciente, h => h.Paciente.Usuario);
+            
+            if (tipoUsuario == "Paciente")
+            {
+                historiales = historiales.Where(h => h.IdPaciente == idUsuario);
+            }
+
             var response = historiales.Select(h => new HistorialClinicoResponse
             {
                 IdHistorial = h.IdHistorial,
@@ -50,9 +65,22 @@ namespace Hospital.API.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<HistorialClinicoResponse>> ObtenerPorId(int id)
         {
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+            if (tipoUsuario == "Familiar")
+            {
+                return Forbid();
+            }
+
             var historial = await _repositorio.ObtenerPorIdAsync(id);
             if (historial == null)
                 return NotFound();
+
+            if (tipoUsuario == "Paciente" && historial.IdPaciente != idUsuario)
+            {
+                return Forbid();
+            }
 
             var response = new HistorialClinicoResponse
             {
@@ -75,6 +103,12 @@ namespace Hospital.API.Controllers
         [HttpPost]
         public async Task<ActionResult> Crear([FromBody] HistorialClinico entidad)
         {
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (tipoUsuario != "Médico")
+            {
+                return Forbid();
+            }
+
             entidad.FechaRegistro = DateTime.Now;
             await _repositorio.CrearAsync(entidad);
 
@@ -105,6 +139,12 @@ namespace Hospital.API.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult> Actualizar(int id, [FromBody] HistorialClinico entidad)
         {
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (tipoUsuario != "Médico")
+            {
+                return Forbid();
+            }
+
             if (id != entidad.IdHistorial)
                 return BadRequest();
             await _repositorio.ActualizarAsync(entidad);
@@ -114,6 +154,12 @@ namespace Hospital.API.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Eliminar(int id)
         {
+            var tipoUsuario = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (tipoUsuario != "Médico")
+            {
+                return Forbid();
+            }
+
             await _repositorio.EliminarAsync(id);
             return NoContent();
         }

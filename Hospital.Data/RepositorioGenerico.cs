@@ -86,5 +86,17 @@ namespace Hospital.Domain
 
             return await query.ToListAsync();
         }
+
+        public async Task<T> ObtenerPorCampoAsync(Expression<Func<T, bool>> predicado, params Expression<Func<T, object>>[] includes)
+        {
+            IQueryable<T> query = _dbSet;
+
+            foreach (var include in includes)
+            {
+                query = query.Include(include);
+            }
+
+            return await query.FirstOrDefaultAsync(predicado);
+        }
     }
 }

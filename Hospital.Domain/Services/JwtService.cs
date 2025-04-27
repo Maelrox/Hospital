@@ -8,7 +8,7 @@ namespace Hospital.Domain.Services
 {
     public interface IJwtService
     {
-        string GenerateToken(int userId, string email);
+        string GenerateToken(int userId, string email, string role);
         ClaimsPrincipal ValidateToken(string token);
     }
 
@@ -21,7 +21,7 @@ namespace Hospital.Domain.Services
             _jwtSettings = jwtSettings;
         }
 
-        public string GenerateToken(int userId, string email)
+        public string GenerateToken(int userId, string email, string role)
         {
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
@@ -30,6 +30,7 @@ namespace Hospital.Domain.Services
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim(ClaimTypes.Email, email),
+                new Claim(ClaimTypes.Role, role),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
