@@ -1,6 +1,7 @@
 ﻿using Hospital.Domain.Entities;
 using Hospital.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Hospital.API.DTOs;
 
 namespace Hospital.API.Controllers
 {
@@ -16,19 +17,58 @@ namespace Hospital.API.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<SignosVitales>>> ObtenerTodos()
+        public async Task<ActionResult<IEnumerable<SignosVitalesResponse>>> ObtenerTodos()
         {
-            var entidades = await _repositorio.ObtenerTodosAsync();
-            return Ok(entidades);
+            var signosVitales = await _repositorio.ObtenerTodosAsync(s => s.Paciente, s => s.Paciente.Usuario);
+            var response = signosVitales.Select(s => new SignosVitalesResponse
+            {
+                IdSignos = s.IdSignos,
+                IdPaciente = s.IdPaciente,
+                FechaRegistro = s.FechaRegistro,
+                Oximetria = s.Oximetria,
+                FrecuenciaRespiratoria = s.FrecuenciaRespiratoria,
+                FrecuenciaCardiaca = s.FrecuenciaCardiaca,
+                Temperatura = s.Temperatura,
+                PresionArterialSistolica = s.PresionArterialSistolica,
+                PresionArterialDiastolica = s.PresionArterialDiastolica,
+                Glicemia = s.Glicemia,
+                IdRegistrador = s.IdRegistrador,
+                TipoRegistrador = s.TipoRegistrador,
+                NombrePaciente = s.Paciente.Usuario.Nombre,
+                ApellidoPaciente = s.Paciente.Usuario.Apellido,
+                Documento = s.Paciente.Usuario.DocumentoIdentidad
+            });
+
+            return Ok(response);
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<SignosVitales>> ObtenerPorId(int id)
+        public async Task<ActionResult<SignosVitalesResponse>> ObtenerPorId(int id)
         {
-            var entidad = await _repositorio.ObtenerPorIdAsync(id);
-            if (entidad == null)
+            var signosVitales = await _repositorio.ObtenerPorIdAsync(id);
+            if (signosVitales == null)
                 return NotFound();
-            return Ok(entidad);
+
+            var response = new SignosVitalesResponse
+            {
+                IdSignos = signosVitales.IdSignos,
+                IdPaciente = signosVitales.IdPaciente,
+                FechaRegistro = signosVitales.FechaRegistro,
+                Oximetria = signosVitales.Oximetria,
+                FrecuenciaRespiratoria = signosVitales.FrecuenciaRespiratoria,
+                FrecuenciaCardiaca = signosVitales.FrecuenciaCardiaca,
+                Temperatura = signosVitales.Temperatura,
+                PresionArterialSistolica = signosVitales.PresionArterialSistolica,
+                PresionArterialDiastolica = signosVitales.PresionArterialDiastolica,
+                Glicemia = signosVitales.Glicemia,
+                IdRegistrador = signosVitales.IdRegistrador,
+                TipoRegistrador = signosVitales.TipoRegistrador,
+                NombrePaciente = signosVitales.Paciente.Usuario.Nombre,
+                ApellidoPaciente = signosVitales.Paciente.Usuario.Apellido,
+                Documento = signosVitales.Paciente.Usuario.DocumentoIdentidad
+            };
+
+            return Ok(response);
         }
 
         [HttpPost]
@@ -54,5 +94,4 @@ namespace Hospital.API.Controllers
             return NoContent();
         }
     }
-
 }

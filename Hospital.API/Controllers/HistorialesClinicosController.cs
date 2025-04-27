@@ -45,17 +45,34 @@ namespace Hospital.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<HistorialClinico>> ObtenerPorId(int id)
+        public async Task<ActionResult<HistorialClinicoResponse>> ObtenerPorId(int id)
         {
-            var entidad = await _repositorio.ObtenerPorIdAsync(id);
-            if (entidad == null)
+            var historial = await _repositorio.ObtenerPorIdAsync(id);
+            if (historial == null)
                 return NotFound();
-            return Ok(entidad);
+
+            var response = new HistorialClinicoResponse
+            {
+                IdHistorial = historial.IdHistorial,
+                IdPaciente = historial.IdPaciente,
+                IdMedico = historial.IdMedico,
+                FechaRegistro = historial.FechaRegistro,
+                Diagnostico = historial.Diagnostico,
+                Observaciones = historial.Observaciones,
+                Tratamiento = historial.Tratamiento,
+                SeguimientoRequerido = historial.SeguimientoRequerido,
+                NombrePaciente = historial.Paciente.Usuario.Nombre,
+                ApellidoPaciente = historial.Paciente.Usuario.Apellido,
+                Documento = historial.Paciente.Usuario.DocumentoIdentidad
+            };
+
+            return Ok(response);
         }
 
         [HttpPost]
         public async Task<ActionResult> Crear([FromBody] HistorialClinico entidad)
         {
+            entidad.FechaRegistro = DateTime.Now;
             await _repositorio.CrearAsync(entidad);
             return CreatedAtAction(nameof(ObtenerPorId), new { id = entidad.IdHistorial }, entidad);
         }

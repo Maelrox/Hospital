@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace Hospital.Domain.Entities
 {
@@ -18,8 +14,8 @@ namespace Hospital.Domain.Entities
 
         [Column("id_paciente")]
         public int IdPaciente { get; set; }
-
-        [Column("fecha_registro")]
+        
+        [Column("fecha_registro", TypeName = "timestamp without time zone")]
         public DateTime FechaRegistro { get; set; }
 
         [Column("oximetria")]
@@ -51,6 +47,7 @@ namespace Hospital.Domain.Entities
 
         // Relación de navegación
         [ForeignKey("IdPaciente")]
+        [ValidateNever]
         public Paciente Paciente { get; set; }
     }
 
