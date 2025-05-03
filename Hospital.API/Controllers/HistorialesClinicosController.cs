@@ -142,10 +142,36 @@ namespace Hospital.API.Controllers
                 return Forbid();
             }
 
-            if (id != entidad.IdHistorial)
-                return BadRequest();
-            await _repositorio.ActualizarAsync(entidad);
-            return NoContent();
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var medico = await _repositorioMedico.ObtenerPorCampoAsync(m => m.IdUsuario == idUsuario);
+            if (medico == null)
+            {
+                return Forbid();
+            }
+
+            var historialExistente = await _repositorio.ObtenerPorIdAsync(id);
+            if (historialExistente == null)
+            {
+                return NotFound();
+            }
+
+            // Update the existing entity's properties
+            historialExistente.Diagnostico = entidad.Diagnostico;
+            historialExistente.Tratamiento = entidad.Tratamiento;
+            historialExistente.Observaciones = entidad.Observaciones;
+            historialExistente.SeguimientoRequerido = entidad.SeguimientoRequerido;
+            historialExistente.IdMedico = medico.IdMedico;
+            historialExistente.IdPaciente = entidad.IdPaciente;
+
+            try
+            {
+                await _repositorio.ActualizarAsync(historialExistente);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpDelete("{id}")]

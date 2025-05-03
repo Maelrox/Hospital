@@ -134,7 +134,7 @@ namespace Hospital.API.Controllers
         public async Task<ActionResult<AutenticacionUsuario>> Login([FromBody] LoginUsuario loginUsuario)
         {
             var usuarios = await _repositorio.ObtenerTodosAsync();
-            var usuario = usuarios.FirstOrDefault(u => u.NombreUsuario == loginUsuario.NombreUsuario);
+            var usuario = usuarios.FirstOrDefault(u => u.NombreUsuario.ToLower() == loginUsuario.NombreUsuario.ToLower());
 
             if (usuario == null)
                 return Unauthorized("Usuario no encontrado");

@@ -195,15 +195,69 @@ namespace Hospital.API.Controllers
         public async Task<ActionResult> Actualizar(int id, [FromBody] SignosVitales entidad)
         {
             var tipoUsuarioStr = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario) || tipoUsuario != TipoUsuario.Medico)
+            if (!Enum.TryParse<TipoUsuario>(tipoUsuarioStr, out var tipoUsuario))
             {
                 return Forbid();
             }
 
-            if (id != entidad.IdSignos)
-                return BadRequest();
-            await _repositorio.ActualizarAsync(entidad);
-            return NoContent();
+            var idUsuario = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+            if (tipoUsuario == TipoUsuario.Medico)
+            {
+                entidad.IdRegistrador = idUsuario;
+                entidad.TipoRegistrador = "Medico";
+            }
+            else if (tipoUsuario == TipoUsuario.Familiar)
+            {
+                var familiar = await _repositorioFamiliar.ObtenerPorCampoAsync(f => f.IdUsuario == idUsuario);
+                if (familiar == null || !familiar.AutorizadoRegistroSignos)
+                {
+                    return BadRequest(new { error = "No está autorizado para registrar signos vitales." });
+                }
+                entidad.IdRegistrador = idUsuario;
+                entidad.TipoRegistrador = "Familiar";
+            }
+            else if (tipoUsuario == TipoUsuario.Paciente)
+            {
+                var paciente = await _repositorioPaciente.ObtenerPorCampoAsync(p => p.IdUsuario == idUsuario);
+                if (paciente == null)
+                {
+                    return Forbid();
+                }
+            }
+            else
+            {
+                return Forbid();
+            }
+
+            var signosVitalesExistente = await _repositorio.ObtenerPorIdAsync(id);
+            if (signosVitalesExistente == null)
+            {
+                return NotFound();
+            }
+
+            // Update the existing entity's properties
+            signosVitalesExistente.Oximetria = entidad.Oximetria;
+            signosVitalesExistente.FrecuenciaRespiratoria = entidad.FrecuenciaRespiratoria;
+            signosVitalesExistente.FrecuenciaCardiaca = entidad.FrecuenciaCardiaca;
+            signosVitalesExistente.Temperatura = entidad.Temperatura;
+            signosVitalesExistente.PresionArterialSistolica = entidad.PresionArterialSistolica;
+            signosVitalesExistente.PresionArterialDiastolica = entidad.PresionArterialDiastolica;
+            signosVitalesExistente.Glicemia = entidad.Glicemia;
+            signosVitalesExistente.IdRegistrador = entidad.IdRegistrador;
+            signosVitalesExistente.TipoRegistrador = entidad.TipoRegistrador;
+            signosVitalesExistente.FechaRegistro = DateTime.Now;
+            signosVitalesExistente.IdPaciente = entidad.IdPaciente;
+
+            try
+            {
+                await _repositorio.ActualizarAsync(signosVitalesExistente);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpDelete("{id}")]

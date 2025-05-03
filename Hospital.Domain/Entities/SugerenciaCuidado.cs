@@ -23,7 +23,7 @@ namespace Hospital.Domain.Entities
         [Column("id_medico")]
         public int IdMedico { get; set; }
 
-        [Column("fecha_registro")]
+        [Column("fecha_registro", TypeName = "timestamp without time zone")]
         public DateTime FechaRegistro { get; set; }
 
         [Column("prioridad")]
